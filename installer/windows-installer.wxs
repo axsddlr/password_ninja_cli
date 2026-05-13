@@ -18,13 +18,13 @@
     </Directory>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="AppExecutable" Guid="*">
+      <Component Id="AppExecutable" Guid="*" Win64="yes">
         <File Id="PasswordNinjaExe" Source="dist\PasswordNinja.exe" KeyPath="yes" />
       </Component>
     </DirectoryRef>
 
     <DirectoryRef Id="ApplicationProgramsFolder">
-      <Component Id="StartMenuShortcutComponent" Guid="*">
+      <Component Id="StartMenuShortcutComponent" Guid="*" Win64="yes">
         <Shortcut Id="StartMenuShortcut" Name="Password Ninja" Target="[INSTALLFOLDER]PasswordNinja.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
         <RemoveFolder Id="RemoveProgramsFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Password Ninja" Name="installed" Type="integer" Value="1" KeyPath="yes" />

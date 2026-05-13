@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="Password Ninja" Language="1033" Version="$(var.ProductVersion)" Manufacturer="Password Ninja" UpgradeCode="7E4E6A93-9E9D-4F9A-9A62-0E59C3E4A7BC">
+  <Product Id="*" Name="Password Ninja" Language="1033" Version="$(var.MsiProductVersion)" Manufacturer="Password Ninja" UpgradeCode="7E4E6A93-9E9D-4F9A-9A62-0E59C3E4A7BC">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
     <MediaTemplate EmbedCab="yes" />

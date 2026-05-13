@@ -58,13 +58,14 @@ jobs:
         shell: pwsh
         run: |
           $version = "${env:RELEASE_TAG}".TrimStart('v')
+          $msiVersion = if ($version -match '^\d+\.\d+\.\d+$') { "$version.0" } else { $version }
           pyinstaller --noconfirm --onefile --windowed --name PasswordNinja --icon assets/password_ninja.ico password_ninja_gui.py
           choco install wixtoolset -y --no-progress
           $candle = Get-ChildItem 'C:\Program Files*\WiX Toolset v*\bin\candle.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
           $light = Get-ChildItem 'C:\Program Files*\WiX Toolset v*\bin\light.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $candle -or -not $light) { throw 'WiX Toolset binaries were not found after installation' }
           $wxs = Join-Path $env:GITHUB_WORKSPACE 'installer/windows-installer.wxs'
-          & $candle.FullName -dProductVersion=$version -out build\windows-installer.wixobj $wxs
+          & $candle.FullName -dMsiProductVersion=$msiVersion -out build\windows-installer.wixobj $wxs
           & $light.FullName -ext WixUIExtension -out release\PasswordNinja.msi build\windows-installer.wixobj
 
       - name: Build Windows portable zip

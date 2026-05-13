@@ -65,8 +65,10 @@ jobs:
           $light = Get-ChildItem 'C:\Program Files*\WiX Toolset v*\bin\light.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $candle -or -not $light) { throw 'WiX Toolset binaries were not found after installation' }
           $wxs = Join-Path $env:GITHUB_WORKSPACE 'installer/windows-installer.wxs'
-          & $candle.FullName -dMsiProductVersion=$msiVersion -out build\windows-installer.wixobj $wxs
-          & $light.FullName -ext WixUIExtension -out release\PasswordNinja.msi build\windows-installer.wixobj
+          $candleArgs = @("-dMsiProductVersion=$msiVersion", "-out", "build\windows-installer.wixobj", $wxs)
+          $lightArgs = @("-ext", "WixUIExtension", "-out", "release\PasswordNinja.msi", "build\windows-installer.wixobj")
+          & $candle.FullName @candleArgs
+          & $light.FullName @lightArgs
 
       - name: Build Windows portable zip
         if: matrix.platform == 'windows'

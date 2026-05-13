@@ -74,6 +74,15 @@ The workflow uploads `dist/password-ninja-gui.exe` as a downloadable artifact on
 
 ## GitHub Releases
 
-Push a tag like `v1.0.0` to run `.github/workflows/release-windows-exe.yml`.
-That workflow builds the EXE, creates a ZIP alongside it, and attaches both files to a GitHub Release.
+Push a tag like `v1.0.0` to run `.github/workflows/release-desktop-packages.yml`.
+That workflow builds installer-style desktop packages for Windows, macOS, and Linux, then attaches them to a GitHub Release.
 You can also trigger it manually by supplying a tag in the Actions tab.
+
+Release assets:
+
+- `PasswordNinja.msi` for Windows
+- `PasswordNinja-Portable-Windows.zip` for Windows portable use containing `PasswordNinjaPortable.exe`
+- the portable app window will show `Password Ninja Portable`
+- the portable build uses a distinct portable icon badge on Windows
+- `PasswordNinja.dmg` for macOS
+- `PasswordNinja.deb` for Linux

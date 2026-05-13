@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="Password Ninja" Language="1033" Version="$(var.ProductVersion)" Manufacturer="Password Ninja" UpgradeCode="7E4E6A93-9E9D-4F9A-9A62-0E59C3E4A7BC">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="assets\password_ninja.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="Password Ninja" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="Password Ninja" />
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="AppExecutable" Guid="*">
+        <File Id="PasswordNinjaExe" Source="dist\PasswordNinja.exe" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcutComponent" Guid="*">
+        <Shortcut Id="StartMenuShortcut" Name="Password Ninja" Target="[INSTALLFOLDER]PasswordNinja.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RemoveFolder Id="RemoveProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Password Ninja" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainFeature" Title="Password Ninja" Level="1">
+      <ComponentRef Id="AppExecutable" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+    </Feature>
+
+    <UIRef Id="WixUI_Minimal" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+  </Product>
+</Wix>

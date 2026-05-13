@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import sys
+import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -14,7 +15,9 @@ from password_ninja_api import DEFAULT_API_URL, PasswordNinjaError, PasswordNinj
 class PasswordNinjaApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Password Ninja")
+        self.app_title = self._resolve_app_title()
+        self.is_portable = self.app_title.endswith("Portable")
+        self.title(self.app_title)
         self.geometry("820x620")
         self.minsize(760, 560)
         self._set_window_icon()
@@ -44,9 +47,23 @@ class PasswordNinjaApp(tk.Tk):
 
         self._build_ui()
 
+    def _resolve_app_title(self) -> str:
+        explicit = os.environ.get("PASSWORD_NINJA_APP_TITLE")
+        if explicit:
+            return explicit
+
+        stem = Path(sys.argv[0]).stem.lower()
+        if "portable" in stem:
+            return "Password Ninja Portable"
+
+        return "Password Ninja"
+
     def _set_window_icon(self) -> None:
+        if not sys.platform.startswith("win"):
+            return
         base_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-        icon_path = base_path.joinpath("assets", "password_ninja.ico")
+        icon_name = "password_ninja_portable.ico" if self.is_portable else "password_ninja.ico"
+        icon_path = base_path.joinpath("assets", icon_name)
         if icon_path.exists():
             try:
                 self.iconbitmap(default=str(icon_path))
@@ -61,7 +78,12 @@ class PasswordNinjaApp(tk.Tk):
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(1, weight=1)
 
-        ttk.Label(header, text="Password Ninja", font=("Segoe UI", 18, "bold")).grid(row=0, column=0, sticky="w")
+        title_row = ttk.Frame(header)
+        title_row.grid(row=0, column=0, sticky="w")
+        ttk.Label(title_row, text=self.app_title, font=("Segoe UI", 18, "bold")).grid(row=0, column=0, sticky="w")
+        if self.is_portable:
+            badge = tk.Label(title_row, text="PORTABLE", bg="#7c3aed", fg="white", padx=8, pady=2, font=("Segoe UI", 8, "bold"))
+            badge.grid(row=0, column=1, sticky="w", padx=(10, 0))
         ttk.Label(header, text="Generate kid-friendly passwords from the public API.").grid(row=1, column=0, sticky="w", pady=(4, 0))
 
         body = ttk.Frame(self, padding=(12, 0, 12, 12))

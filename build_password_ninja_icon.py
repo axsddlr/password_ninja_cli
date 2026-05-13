@@ -20,6 +20,7 @@ except ImportError:  # pragma: no cover - optional dependency
 LOGO_URL = "https://password.ninja/img/logo.png"
 OUTPUT_DIR = Path("assets")
 OUTPUT_FILE = OUTPUT_DIR / "password_ninja.ico"
+OUTPUT_PNG = OUTPUT_DIR / "password_ninja.png"
 
 
 def _read_png_dimensions(data: bytes) -> tuple[int, int]:
@@ -56,9 +57,10 @@ def main() -> int:
         png_data = response.read()
 
     width, height = _read_png_dimensions(png_data)
+    OUTPUT_PNG.write_bytes(png_data)
     ico_data = _build_ico_from_png(png_data, width, height)
     OUTPUT_FILE.write_bytes(ico_data)
-    print(f"Wrote {OUTPUT_FILE} from {LOGO_URL} ({width}x{height})")
+    print(f"Wrote {OUTPUT_FILE} and {OUTPUT_PNG} from {LOGO_URL} ({width}x{height})")
     return 0
 
 

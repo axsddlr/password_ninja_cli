@@ -1,0 +1,180 @@
+name: Release Desktop Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            package_name: PasswordNinja.msi
+            portable_name: PasswordNinja-Portable-Windows.zip
+          - os: macos-latest
+            platform: macos
+            package_name: PasswordNinja.dmg
+          - os: ubuntu-latest
+            platform: linux
+            package_name: PasswordNinja.deb
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip pyinstaller certifi
+
+      - name: Build brand assets
+        run: python build_password_ninja_icon.py
+
+      - name: Prepare release directory
+        shell: bash
+        run: mkdir -p release
+
+      - name: Build Windows MSI
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $version = "${env:RELEASE_TAG}".TrimStart('v')
+          pyinstaller --noconfirm --onefile --windowed --name PasswordNinja --icon assets/password_ninja.ico password_ninja_gui.py
+          choco install wixtoolset -y --no-progress
+          $candle = Get-ChildItem 'C:\Program Files*\WiX Toolset v*\bin\candle.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $light = Get-ChildItem 'C:\Program Files*\WiX Toolset v*\bin\light.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $candle -or -not $light) { throw 'WiX Toolset binaries were not found after installation' }
+          & $candle.FullName -dProductVersion=$version -out build\windows-installer.wixobj installer\windows-installer.wxs
+          & $light.FullName -ext WixUIExtension -out release\PasswordNinja.msi build\windows-installer.wixobj
+
+      - name: Build Windows portable zip
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip pyinstaller certifi
+          python build_password_ninja_icon.py
+          & "portable/build-portable-icon.ps1"
+          pyinstaller --noconfirm --onedir --windowed --name PasswordNinjaPortable --icon assets/password_ninja_portable.ico password_ninja_gui.py
+          if (Test-Path portable) { Remove-Item portable -Recurse -Force }
+          New-Item -ItemType Directory -Force portable | Out-Null
+          Copy-Item -Recurse dist/PasswordNinjaPortable/* portable/
+          Compress-Archive -Path portable/* -DestinationPath release\PasswordNinja-Portable-Windows.zip -Force
+
+      - name: Build macOS DMG
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/icon.iconset assets/password_ninja.icns
+          mkdir -p build/icon.iconset
+          sips -z 16 16 assets/password_ninja.png --out build/icon.iconset/icon_16x16.png >/dev/null
+          sips -z 32 32 assets/password_ninja.png --out build/icon.iconset/icon_32x32.png >/dev/null
+          sips -z 128 128 assets/password_ninja.png --out build/icon.iconset/icon_128x128.png >/dev/null
+          sips -z 256 256 assets/password_ninja.png --out build/icon.iconset/icon_256x256.png >/dev/null
+          sips -z 512 512 assets/password_ninja.png --out build/icon.iconset/icon_512x512.png >/dev/null
+          cp build/icon.iconset/icon_16x16.png build/icon.iconset/icon_16x16@2x.png
+          cp build/icon.iconset/icon_32x32.png build/icon.iconset/icon_32x32@2x.png
+          cp build/icon.iconset/icon_128x128.png build/icon.iconset/icon_128x128@2x.png
+          cp build/icon.iconset/icon_256x256.png build/icon.iconset/icon_256x256@2x.png
+          cp build/icon.iconset/icon_512x512.png build/icon.iconset/icon_512x512@2x.png
+          iconutil -c icns build/icon.iconset -o assets/password_ninja.icns
+          pyinstaller --noconfirm --windowed --name PasswordNinja --icon assets/password_ninja.icns password_ninja_gui.py
+          hdiutil create -volname "Password Ninja" -srcfolder dist/PasswordNinja.app -ov -format UDZO release/PasswordNinja.dmg
+
+      - name: Build Linux DEB
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          pyinstaller --noconfirm --onedir --windowed --name PasswordNinja password_ninja_gui.py
+          pkgroot="package-root"
+          rm -rf "$pkgroot"
+          mkdir -p "$pkgroot/DEBIAN" "$pkgroot/opt/password-ninja" "$pkgroot/usr/bin" "$pkgroot/usr/share/applications" "$pkgroot/usr/share/icons/hicolor/256x256/apps"
+          cp -R dist/PasswordNinja/. "$pkgroot/opt/password-ninja/"
+          chmod +x "$pkgroot/opt/password-ninja/PasswordNinja"
+          cat > "$pkgroot/usr/bin/password-ninja" <<'EOF'
+          #!/bin/sh
+          exec /opt/password-ninja/PasswordNinja "$@"
+          EOF
+          chmod +x "$pkgroot/usr/bin/password-ninja"
+          cat > "$pkgroot/usr/share/applications/password-ninja.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Password Ninja
+          Exec=password-ninja
+          Icon=password-ninja
+          Categories=Utility;
+          Terminal=false
+          EOF
+          cp assets/password_ninja.png "$pkgroot/usr/share/icons/hicolor/256x256/apps/password-ninja.png"
+          cat > "$pkgroot/DEBIAN/control" <<EOF
+          Package: password-ninja
+          Version: ${version}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Password Ninja
+          Depends: libc6, libgcc-s1, libglib2.0-0, libgtk-3-0, libstdc++6, libx11-6, libxcb1, libxext6, libxrender1
+          Description: Password Ninja desktop application
+           Generates kid-friendly passwords from the Password Ninja API.
+          EOF
+          dpkg-deb --build "$pkgroot" "release/PasswordNinja.deb"
+
+      - name: Upload packaged build
+        uses: actions/upload-artifact@v4
+        with:
+          name: password-ninja-${{ matrix.platform }}
+          path: release/${{ matrix.package_name }}
+
+      - name: Upload Windows portable build
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: password-ninja-windows-portable
+          path: release/${{ matrix.portable_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download packaged builds
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          body: |
+            Automated desktop packages for Windows, macOS, and Linux.
+
+            Download the installer or package that matches your platform from the assets below.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

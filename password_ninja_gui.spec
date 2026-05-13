@@ -1,7 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+
 
 block_cipher = None
+
+icon_path = 'assets/password_ninja.ico' if sys.platform.startswith('win') else None
 
 
 a = Analysis(
@@ -36,5 +40,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/password_ninja.ico',
+    icon=icon_path,
 )
